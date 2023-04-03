@@ -108,13 +108,14 @@ def fp1632_to_float64(altitude):
 def keyboard_interrupt_handler(signal_num, frame):
     print("KeyboardInterrupt received, running final code...")
     global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag, IMU_list, GPS_list, arr_status, arr_lat_lon, arr_alt
-    arr1_imu = np.zeros((len(IMU_list),58)) 
-    arr2_gps = np.zeros((len(GPS_list),76)) 
+    arr1_imu = np.zeros((len(IMU_list),62)) 
+    arr2_gps = np.zeros((len(GPS_list),80)) 
     arr_acc = np.zeros((len(IMU_list),3))
     arr_quaternion = np.zeros((len(IMU_list),4))
     arr_RoR = np.zeros((len(IMU_list),3))
     arr_Mag = np.zeros((len(IMU_list),3))
     arr_status = np.zeros((len(IMU_list),4))
+    arr_time = np.zeros((len(IMU_list),4))
     
     arr_acc_gps = np.zeros((len(GPS_list),3))
     arr_quaternion_gps = np.zeros((len(GPS_list),4))
@@ -124,25 +125,26 @@ def keyboard_interrupt_handler(signal_num, frame):
     arr_lat_lon = np.zeros((len(GPS_list),2))
     arr_alt = np.zeros((len(GPS_list),1))
     for i,msg in enumerate(IMU_list):
-        arr1_imu[i][0:2] = msg[7:9]    
-        arr1_imu[i][2:18] = msg[19:35]  
+        arr1_imu[i][0:2] = msg[7:9]  
+        arr1_imu[i][2:6] = msg[12:15]
+        arr1_imu[i][6:24] = msg[19:35]  
         quaternion = msg[19:35]  # 
         arr_quaternion[i][0:4] = struct.unpack('!4f', quaternion) 
         
         imu_acceleration_bytes = msg[38:50]  # 
         arr_acc[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
         
-        arr1_imu[i][18:30] = msg[38:50] #Acceleration
+        arr1_imu[i][24:36] = msg[38:50] #Acceleration
         
-        arr1_imu[i][30:42] = msg[53:65]
+        arr1_imu[i][36:48] = msg[53:65]
         ror_temp = msg[53:65]  # 
         arr_RoR[i][0:3] = struct.unpack('!3f', ror_temp) 
 
-        arr1_imu[i][42:54] = msg[68:80]
+        arr1_imu[i][48:60] = msg[68:80]
         mag_temp = msg[68:80]
         arr_Mag[i][0:3] = struct.unpack('!3f', mag_temp) 
         
-        arr1_imu[i][54:58] = msg[83:87]
+        arr1_imu[i][60:64] = msg[83:87]
         status_temp =  msg[83:87]
         arr_status[i][0:4] = status_temp
     for i,msg in enumerate(GPS_list):
@@ -174,6 +176,7 @@ def keyboard_interrupt_handler(signal_num, frame):
         
         arr2_gps[i][70:76] = msg[105:111]       
         arr_alt[i][0:1] = fp1632_to_float64(msg[70:76])
+        
         
     np.savetxt("GPS_results_test.csv", arr2_gps, delimiter=",")
     np.savetxt("Lat_Lon_results.csv", arr_lat_lon, delimiter ="," )
