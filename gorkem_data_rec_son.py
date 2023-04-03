@@ -12,7 +12,9 @@ import queue
 import datetime
 import struct
 import signal
-
+import cv2
+from collections import namedtuple
+import pickle
 
 factorFP1632 = 1 << 32
 settings = {
@@ -45,18 +47,12 @@ ser.write(config_str)
 str4 = b"\xfa\xff\x10\x00\xf1"
 ser.write(str4)
   
-
-
 GpsImu_data = bytearray()
 Imu_data = bytearray()
 IMU_list = []
 GPS_list = []
 hatalı_list = []
-
-arr1 = np.zeros((len(IMU_list), 58)) 
-i = 0      
-
-
+t1 = time.time()  
 
 # Create a Queue object to hold the incoming data
 data_queue = queue.Queue()
@@ -74,22 +70,9 @@ serial_thread = threading.Thread(target=read_serial_data, args=(ser, data_queue)
 serial_thread.setDaemon(True)
 serial_thread.start()
 
-GpsImu_data = bytearray()
-Imu_data = bytearray()
-IMU_list = []
-GPS_list = []
-hatalı_list = []
-t1 = time.time()
+
 
 def fp1632_to_float64(altitude):
-    # d = bytes([0, 0, fp[4], fp[5], fp[0], fp[1], fp[2], fp[3]])
-    # if d[2] & 0x80 > 0:
-    #     # sign-extend to 64 bits
-    #     d = bytes([0xff, 0xff]) + d[2:]
-    # u = struct.unpack('>Q', d)[0]
-    # i = u if u < (1 << 63) else u - (1 << 64)
-    # f = i / factorFP1632
-    # return f
     # Reverse the byte order to get the bytes in the correct order
     altitude_bytes = altitude[:4][::-1] + altitude[4:][::-1]
     # Interpret the 6 bytes as a 64-bit integer
@@ -107,9 +90,9 @@ def fp1632_to_float64(altitude):
 
 def keyboard_interrupt_handler(signal_num, frame):
     print("KeyboardInterrupt received, running final code...")
-    global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag
+    global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag, output_file
     global IMU_list, GPS_list, arr_status, arr_lat_lon, arr_alt, arr_time, time_stamp_list
-    arr1_imu = np.zeros((len(IMU_list),59)) 
+    arr1_imu = np.zeros((len(IMU_list),58)) 
     arr2_gps = np.zeros((len(GPS_list),76)) 
     arr_acc = np.zeros((len(IMU_list),3))
     arr_quaternion = np.zeros((len(IMU_list),4))
@@ -215,7 +198,9 @@ def keyboard_interrupt_handler(signal_num, frame):
     np.savetxt("GPS_results_test.csv", arr2_gps, delimiter=",")
     np.savetxt("Lat_Lon_results.csv", arr_lat_lon, delimiter ="," )
     np.savetxt("IMU_results_test.csv", arr1_imu, delimiter =",")
-    
+    # Save frame data to a file
+    with open(output_file, 'wb') as f:
+        pickle.dump(frame_data_list, f)
     t2 = time.time()
     ser.close()
     print('Time of process', t2-t1)
@@ -226,8 +211,8 @@ def keyboard_interrupt_handler(signal_num, frame):
 # Set the keyboard interrupt handler
 signal.signal(signal.SIGINT, keyboard_interrupt_handler)
 counter = 0
-# Main program loop
-while True: 
+def MTI():
+    global IMU_list, GPS_list, counter
     # Check if there is data in the queue
     if not data_queue.empty():
         data = data_queue.get()
@@ -287,8 +272,59 @@ while True:
                         hatalı_list.append(buffer)
                         # buffer = bytearray()
                         
+                        
+                        
+def handle_zed_camera(device_id, output_file):
+    global frame_data_list
+    
+
+    cap = cv2.VideoCapture(device_id)
+    timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
             
-            
+            frame_data = FrameData(timestamp, frame)
+            frame_data_list.append(frame_data)
+
+            cv2.imshow('ZED Camera', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    cap.release()
+    cv2.destroyAllWindows()
+    
+
+frame_data_list = []
+FrameData = namedtuple('FrameData', ['timestamp', 'frame'])
+
+# Configure your MTI-7 port and ZED camera device ID
+# mti7_port = "COM3"  # Change this to your MTI-7 device port
+zed_camera_device_id = 0  # Change this if your ZED camera has a different device ID
+output_file = "frame_data.pkl"
+
+# Start threads for both devices
+# mti7_thread = threading.Thread(target=handle_mti7_data, args=(mti7_port,))
+zed_thread = threading.Thread(target=handle_zed_camera, args=(zed_camera_device_id, output_file))
+# mti7_thread.start()
+zed_thread.start()
+
+# Main program loop
+counter = 0
+while True: 
+    MTI()
+    
+
+
+
+
+
+
+
+# Wait for both threads to finish
+# mti7_thread.join()
+# zed_thread.join()
+
+    
             
 
               
