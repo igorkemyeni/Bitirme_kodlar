@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Sun Mar 12 21:49:56 2023
 
@@ -279,11 +278,11 @@ def handle_zed_camera(device_id, output_file):
     
 
     cap = cv2.VideoCapture(device_id)
-    timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            
+            timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
             frame_data = FrameData(timestamp, frame)
             frame_data_list.append(frame_data)
 
@@ -299,7 +298,7 @@ FrameData = namedtuple('FrameData', ['timestamp', 'frame'])
 
 # Configure your MTI-7 port and ZED camera device ID
 # mti7_port = "COM3"  # Change this to your MTI-7 device port
-zed_camera_device_id = 0  # Change this if your ZED camera has a different device ID
+zed_camera_device_id = 1  # Change this if your ZED camera has a different device ID
 output_file = "frame_data.pkl"
 
 # Start threads for both devices
