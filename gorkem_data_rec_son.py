@@ -194,6 +194,7 @@ while True:
     # Check if there is data in the queue
     if not data_queue.empty():
         data = data_queue.get()
+        
         buffer = bytearray(data)  # reset buffer with new data
         # Search for the start and end markers in the buffer
         start_index = buffer.find(b"\xfa")
@@ -210,10 +211,17 @@ while True:
                             print(buffer[2], counter)
                             print('len of buf',len(buffer))
                             message = buffer[:88]
-                            Imu_data = message[4:87]
+                            s = sum(message[1:])
+                            hex_code = hex(s)[2:]
+                            hex_lower_byte = hex_code[-2:]
+                            if hex_lower_byte == "00":
+                                IMU_list.append(message)
+                                Imu_data = message[4:87]
+                            else:
+                                hatalı_list.append(message)
                             # imu data
                             buffer = bytearray()  # reset buffer
-                            IMU_list.append(message)
+                                
                             
                            
                     elif buffer[3] == 128:
@@ -225,9 +233,14 @@ while True:
                             print(buffer[2])
                             # gps+imu data
                             message = buffer[:111]
-                            GpsImu_data = message[4:111]
+                            # GpsImu_data = message[4:111]
+                            s = sum(message[1:])
+                            hex_code = hex(s)[2:]
+                            hex_lower_byte = hex_code[-2:]
+                            if hex_lower_byte == "00":
+                                GPS_list.append(message)
                             buffer = bytearray()  # reset buffer
-                            GPS_list.append(message)
+
                         # else:
                         #     print('ekledik')
                         #     buffer.extend(data)
@@ -252,6 +265,13 @@ while True:
             * Next 6 bytes (70:76) contains altitude (fp1632)
             """
               
-            
+"""
+DECIMAL TO HEX CONV FOR Checksum check
+for i in IMU_list:
+    s = sum(i[1:])
+    hex_code = hex(s)[2:]
+    hex_lower_byte = hex_code[-2:]
+    print("Lower byte of hex number", hex_code, "is", hex_lower_byte)
+"""
 
 
