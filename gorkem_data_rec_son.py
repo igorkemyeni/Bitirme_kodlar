@@ -9,7 +9,7 @@ import numpy as np
 import time
 import threading
 import queue
-
+import datetime
 import struct
 import signal
 
@@ -107,16 +107,16 @@ def fp1632_to_float64(altitude):
 
 def keyboard_interrupt_handler(signal_num, frame):
     print("KeyboardInterrupt received, running final code...")
-    global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag, IMU_list, GPS_list, arr_status, arr_lat_lon, arr_alt
-    arr1_imu = np.zeros((len(IMU_list),62)) 
-    arr2_gps = np.zeros((len(GPS_list),80)) 
+    global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag
+    global IMU_list, GPS_list, arr_status, arr_lat_lon, arr_alt, arr_time, time_stamp_list
+    arr1_imu = np.zeros((len(IMU_list),59)) 
+    arr2_gps = np.zeros((len(GPS_list),76)) 
     arr_acc = np.zeros((len(IMU_list),3))
     arr_quaternion = np.zeros((len(IMU_list),4))
     arr_RoR = np.zeros((len(IMU_list),3))
     arr_Mag = np.zeros((len(IMU_list),3))
     arr_status = np.zeros((len(IMU_list),4))
-    arr_time = np.zeros((len(IMU_list),4))
-    
+    time_stamp_list = []
     arr_acc_gps = np.zeros((len(GPS_list),3))
     arr_quaternion_gps = np.zeros((len(GPS_list),4))
     arr_RoR_gps = np.zeros((len(GPS_list),3))
@@ -124,29 +124,63 @@ def keyboard_interrupt_handler(signal_num, frame):
     arr_status_gps = np.zeros((len(GPS_list),4))
     arr_lat_lon = np.zeros((len(GPS_list),2))
     arr_alt = np.zeros((len(GPS_list),1))
+    
+    arr_time = np.zeros((len(IMU_list),1))
+    """ Arr1 contains all the necessary data for the IMU data
+    * First 2 Columns contains Packet Counter
+    * Next 16 Columns (2:18) contains Quaternion
+    * Next 12 Bytes (18:30) contains Acceleration
+    * Next 12 Bytes (30:42) contains RoR
+    * Next 12 bytes (42:54) contains magnetic field
+    * Next 4 bytes (54:58) contains status word 
+    For the GPS Data
+    * Neft 12 Bytes (58:70) contains Lat Long (fp1632)
+    * Next 6 bytes (70:76) contains altitude (fp1632)
+    """
     for i,msg in enumerate(IMU_list):
-        arr1_imu[i][0:2] = msg[7:9]  
-        arr1_imu[i][2:6] = msg[12:15]
-        arr1_imu[i][6:24] = msg[19:35]  
+        time_temp = msg[12:16]
+        arr_time[i] = struct.unpack('!I', time_temp)
+        
+        arr1_imu[i][0:2] = msg[7:9]    
+        arr1_imu[i][2:18] = msg[19:35]  
         quaternion = msg[19:35]  # 
         arr_quaternion[i][0:4] = struct.unpack('!4f', quaternion) 
         
         imu_acceleration_bytes = msg[38:50]  # 
         arr_acc[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
         
-        arr1_imu[i][24:36] = msg[38:50] #Acceleration
+        arr1_imu[i][18:30] = msg[38:50] #Acceleration
         
-        arr1_imu[i][36:48] = msg[53:65]
+        arr1_imu[i][30:42] = msg[53:65]
         ror_temp = msg[53:65]  # 
         arr_RoR[i][0:3] = struct.unpack('!3f', ror_temp) 
 
-        arr1_imu[i][48:60] = msg[68:80]
+        arr1_imu[i][42:54] = msg[68:80]
         mag_temp = msg[68:80]
         arr_Mag[i][0:3] = struct.unpack('!3f', mag_temp) 
         
-        arr1_imu[i][60:64] = msg[83:87]
+        arr1_imu[i][54:58] = msg[83:87]
         status_temp =  msg[83:87]
         arr_status[i][0:4] = status_temp
+        
+        max_value = 0xFFFFFFFFF
+        sample_time = arr_time[i].item()
+        
+        if sample_time >= max_value:
+            # wraparound occurred, subtract max_value and add one day
+            elapsed_time = (sample_time - max_value) / 10000
+            timestamp = datetime.datetime.now() - datetime.timedelta(days=1) + datetime.timedelta(seconds=elapsed_time)
+        else:   
+            # no wraparound, convert directly to datetime.datetime object
+            timestamp = datetime.datetime.now() + datetime.timedelta(seconds=sample_time / 10000)
+
+        # format the timestamp as a string with milliseconds
+        timestamp_str = timestamp.strftime('%H:%M:%S.%f')[:-3]
+        time_stamp_list.append(timestamp_str)
+            
+            
+            
+            
     for i,msg in enumerate(GPS_list):
         
         arr2_gps[i][0:2] = msg[7:9]    
@@ -256,17 +290,7 @@ while True:
             
             
             
-            """ Arr1 contains all the necessary data for the IMU data
-            * First 2 Columns contains Packet Counter
-            * Next 16 Columns (2:18) contains Quaternion
-            * Next 12 Bytes (18:30) contains Acceleration
-            * Next 12 Bytes (30:42) contains RoR
-            * Next 12 bytes (42:54) contains magnetic field
-            * Next 4 bytes (54:58) contains status word 
-            For the GPS Data
-            * Neft 12 Bytes (58:70) contains Lat Long (fp1632)
-            * Next 6 bytes (70:76) contains altitude (fp1632)
-            """
+
               
 """
 DECIMAL TO HEX CONV FOR Checksum check
