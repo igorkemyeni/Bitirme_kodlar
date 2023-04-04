@@ -61,7 +61,7 @@ data_queue = queue.Queue()
 # Define the thread function to read data from the serial port
 def read_serial_data(ser, data_queue):
     while True:
-        data = ser.read(132)
+        data = ser.read(266)
         data_queue.put(data)
 
 # Create a thread to run the read_serial_data function and set it as a daemon thread
@@ -233,14 +233,14 @@ def MTI():
         data = data_queue.get()
         
         buffer = bytearray(data)  # reset buffer with new data
-        print(len(buffer))
+        # print(len(buffer))
         # Search for the start and end markers in the buffer
         start_index = buffer.find(b"\xfa")
         next_index = buffer.find(b"\xff")
         msg_id = buffer.find(b"\x36")
         # print(len(buffer))
         if (start_index > 0) & (start_index + 1 == next_index) & (start_index + 2 == msg_id):
-            print('girdik')
+            # print('girdik')
             buffer = buffer[start_index:]
             whole_packets.append(buffer)
             if len(buffer)>3:
@@ -270,7 +270,7 @@ def MTI():
                     # while len(buffer) <  111:
                     #     print('dolmadı')
                         # print(len(buffer))
-                    if len(buffer) >= 133: 
+                    if len(buffer) >= 132: 
                         print(buffer[2])
                         # gps+imu data
                         message = buffer[:133]

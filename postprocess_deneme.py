@@ -3,7 +3,7 @@
 Created on Tue Apr  4 19:05:33 2023
 
 @author: ysfsl"""
-
+import pandas as pd
 import serial
 import numpy as np
 import time
@@ -59,7 +59,7 @@ data_queue = queue.Queue()
 # Define the thread function to read data from the serial port
 def read_serial_data(ser, data_queue):
     while True:
-        data = ser.read(132)
+        data = ser.read(266)
         data_queue.put(data)
 
 # Create a thread to run the read_serial_data function and set it as a daemon thread
@@ -80,18 +80,18 @@ def fp1632_to_float64(fp):
     return f
 counter = 0
 hatalı_gps = []
-buffer =  b''
+# buffer =  b''
 def keyboard_interrupt_handler(signal_num, frame):
     
     print("KeyboardInterrupt received, running final code...")
-    global counter, buffer, IMU_list, GPS_list
-    global arr1_imu, arr2_gps, arr_acc, arr_quaternion, arr_RoR, arr_Mag, output_file, buffer, counter
-    global IMU_list, GPS_list, arr_status, arr_lat_lon, arr_alt,arr_vel, arr_time, time_stamp_list, time_stamp_list_gps
+    global counter, buffer, IMU_list, GPS_list,arr1_imu, arr2_gps, time_stamp_list,time_stamp_list_gps
+    global  arr_acc, arr_quaternion, arr_RoR, arr_Mag, output_file, buffer, counter, arr4_hepsi, df_gps, df_imu
+    global  arr_lat_lon, arr_alt,arr_vel, arr_time ,arr_RoR_gps, arr_acc_gps, arr_Mag_gps, arr3_GPS_hepsi,arr4_imu_hepsi
     # print('here')
-    buffer = bytearray(buffer)
-    for i in range(len(buffer)-3):
-        print(i)
-        if (buffer[i] == 250) & (buffer[i+1] ==255) & (buffer[i+2] == 54):
+    # buffer = bytearray(buffer)
+    for i in range(len(buffer)-4):
+        # print(i)
+        if (buffer[i] == 250) & (buffer[i+1] ==255) & (buffer [i+2] == 54):
             if buffer[i+3] == 83:
                 counter += 1
                 print(buffer[2], counter)
@@ -121,7 +121,7 @@ def keyboard_interrupt_handler(signal_num, frame):
                     GPS_list.append(message)
                 else:
                     hatalı_gps.append(message)
-                buffer = bytearray()  # reset buffer
+                # buffer = bytearray()  # reset buffer
 
                 # else:
                 #     print('ekledik')
@@ -131,27 +131,28 @@ def keyboard_interrupt_handler(signal_num, frame):
                 print("hatalı", buffer[3])
                 hatalı_list.append(buffer)
                 # buffer = bytearray()
-    GPS_list = GPS_list[10:]
-    IMU_list = IMU_list[10:]
+    GPS_list = GPS_list[8:]
+    IMU_list = IMU_list[8:]
     arr1_imu = np.zeros((len(IMU_list),58)) 
     arr2_gps = np.zeros((len(GPS_list),94)) 
-    # arr_acc = np.zeros((len(IMU_list),3))
-    # arr_quaternion = np.zeros((len(IMU_list),4))
-    # arr_RoR = np.zeros((len(IMU_list),3))
-    # arr_Mag = np.zeros((len(IMU_list),3))
-    # arr_status = np.zeros((len(IMU_list),4))
+    arr_acc = np.zeros((len(IMU_list),3))
+    arr_quaternion = np.zeros((len(IMU_list),4))
+    arr_RoR = np.zeros((len(IMU_list),3))
+    arr_Mag = np.zeros((len(IMU_list),3))
+    arr_status = np.zeros((len(IMU_list),4))
     time_stamp_list = []
     time_stamp_list_gps = []
-    # arr_acc_gps = np.zeros((len(GPS_list),3))
-    # arr_quaternion_gps = np.zeros((len(GPS_list),4))
-    # arr_RoR_gps = np.zeros((len(GPS_list),3))
-    # arr_Mag_gps = np.zeros((len(GPS_list),3))
+    arr_acc_gps = np.zeros((len(GPS_list),3))
+    arr_quaternion_gps = np.zeros((len(GPS_list),4))
+    arr_RoR_gps = np.zeros((len(GPS_list),3))
+    arr_Mag_gps = np.zeros((len(GPS_list),3))
     # arr_status_gps = np.zeros((len(GPS_list),4))
-    # arr_lat_lon = np.zeros((len(GPS_list),2))
-    # arr_alt = np.zeros((len(GPS_list),1))
-    # arr_vel = np.zeros((len(GPS_list),3))
+    arr_lat_lon = np.zeros((len(GPS_list),2))
+    arr_alt = np.zeros((len(GPS_list),1))
+    arr_vel = np.zeros((len(GPS_list),3))
     
     arr_time = np.zeros((len(IMU_list),1))
+    arr_time_GPS = np.zeros((len(GPS_list),1))
     """ Arr1 contains all the necessary data for the IMU data
     * First 2 Columns contains Packet Counter
     * Next 16 Columns (2:18) contains Quaternion
@@ -169,25 +170,25 @@ def keyboard_interrupt_handler(signal_num, frame):
         
         arr1_imu[i][0:2] = msg[7:9]    
         arr1_imu[i][2:18] = msg[19:35]  
-        # quaternion = msg[19:35]  # 
-        # arr_quaternion[i][0:4] = struct.unpack('!4f', quaternion) 
+        quaternion = msg[19:35]  # 
+        arr_quaternion[i][0:4] = struct.unpack('!4f', quaternion) 
         
-        # imu_acceleration_bytes = msg[38:50]  # 
-        # arr_acc[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
+        imu_acceleration_bytes = msg[38:50]  # 
+        arr_acc[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
         
         arr1_imu[i][18:30] = msg[38:50] #Acceleration
         
         arr1_imu[i][30:42] = msg[53:65]
-        # ror_temp = msg[53:65]  # 
-        # arr_RoR[i][0:3] = struct.unpack('!3f', ror_temp) 
+        ror_temp = msg[53:65]  # 
+        arr_RoR[i][0:3] = struct.unpack('!3f', ror_temp) 
 
         arr1_imu[i][42:54] = msg[68:80]
-        # mag_temp = msg[68:80]
-        # arr_Mag[i][0:3] = struct.unpack('!3f', mag_temp) 
+        mag_temp = msg[68:80]
+        arr_Mag[i][0:3] = struct.unpack('!3f', mag_temp) 
         
         arr1_imu[i][54:58] = msg[83:87]
-        # status_temp =  msg[83:87]
-        # arr_status[i][0:4] = status_temp
+        status_temp =  msg[83:87]
+        arr_status[i][0:4] = status_temp
         
         max_value = 0xFFFFFFFFF
         sample_time = arr_time[i].item()
@@ -209,40 +210,41 @@ def keyboard_interrupt_handler(signal_num, frame):
             
     for i,msg in enumerate(GPS_list):
         time_temp = msg[12:16]
-        arr_time[i] = struct.unpack('!I', time_temp)
+        arr_time_GPS[i] = struct.unpack('!I', time_temp)
         arr2_gps[i][0:2] = msg[7:9]    
         arr2_gps[i][2:18] = msg[19:35]  
-        # quaternion = msg[19:35]  # 
-        # arr_quaternion_gps[i][0:4] = struct.unpack('!4f', quaternion) 
+        quaternion = msg[19:35]  # 
+        arr_quaternion_gps[i][0:4] = struct.unpack('!4f', quaternion) 
         
-        # imu_acceleration_bytes = msg[38:50]  # 
-        # arr_acc_gps[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
+        imu_acceleration_bytes = msg[38:50]  # 
+        arr_acc_gps[i][0:3] = struct.unpack('!3f', imu_acceleration_bytes) 
         
         arr2_gps[i][18:30] = msg[38:50] #Acceleration
         
         arr2_gps[i][30:42] = msg[53:65]
-        # ror_temp = msg[53:65]  # 
-        # arr_RoR_gps[i][0:3] = struct.unpack('!3f', ror_temp) 
+        ror_temp = msg[53:65]  # 
+        arr_RoR_gps[i][0:3] = struct.unpack('!3f', ror_temp) 
 
         arr2_gps[i][42:54] = msg[68:80]
-        # mag_temp = msg[68:80]
-        # arr_Mag_gps[i][0:3] = struct.unpack('!3f', mag_temp) 
+        mag_temp = msg[68:80]
+        arr_Mag_gps[i][0:3] = struct.unpack('!3f', mag_temp) 
         
         arr2_gps[i][54:58] = msg[83:87]
         # status_temp =  msg[83:87]
         # arr_status_gps[i][0:1] = status_temp[-1]
         
         arr2_gps[i][58:70]= msg[90:102]
-        # arr_lat_lon[i][0:2] = [fp1632_to_float64(msg[58:64]),fp1632_to_float64(msg[64:70])]
+        
+        arr_lat_lon[i][0:2] = [fp1632_to_float64(msg[58:64]),fp1632_to_float64(msg[64:70])]
         
         arr2_gps[i][70:76] = msg[105:111]       
-        # arr_alt[i][0:1] = fp1632_to_float64(msg[105:111])
+        arr_alt[i][0:1] = fp1632_to_float64(msg[105:111])
         
         arr2_gps[i][76:] = msg[114:132]
-        # arr_vel[i][0:3] = fp1632_to_float64(msg[114:132])       
+        arr_vel[i][0:3] = fp1632_to_float64(msg[114:132])       
         
         max_value = 0xFFFFFFFFF
-        sample_time = arr_time[i].item()
+        sample_time = arr_time_GPS[i].item()
         
         if sample_time >= max_value:
             # wraparound occurred, subtract max_value and add one day
@@ -256,6 +258,26 @@ def keyboard_interrupt_handler(signal_num, frame):
         timestamp_str = timestamp.strftime('%H:%M:%S.%f')[:-3]
         time_stamp_list_gps.append(timestamp_str)
         
+        
+    """#SADECE IMU İSE BUNU ÇALIŞTIR """
+    arr4_imu_hepsi = np.hstack((arr_acc,arr_Mag,arr_RoR))
+    df_imu = pd.DataFrame(arr4_imu_hepsi, columns=['ax','ay','az','mgx','mgy','mgz','RotX','RotY','RotZ'])
+    df_imu['ts']= time_stamp_list
+    df_imu.to_csv('pd_IMU_hepsi.csv', index = False)
+
+    
+    '''GPS DENEMEYECEKSENİZ BURAYI COMMENTLEYİN ALLAH İÇİN'''
+
+    # arr3_GPS_hepsi = np.hstack((arr_lat_lon,arr_alt,arr_acc_gps,arr_RoR_gps))
+    # df_gps = pd.DataFrame(arr3_GPS_hepsi,columns=['lat','lon','alt','ax','ay','az','RotX','RotY','RotZ'])
+    # df_gps['ts'] = time_stamp_list_gps
+    # df_gps.to_csv('pd_GPS_hepsi.csv', index = False)
+    # np.savetxt("GPS_results_test_Processed.csv", arr3_GPS_hepsi, delimiter=",")
+    # # ts_arr = np.array(time_stamp_list).reshape(-1,1)
+    
+    
+    
+    
     np.savetxt("GPS_results_test_post.csv", arr2_gps, delimiter=",")
     # np.savetxt("Lat_Lon_results_post.csv", arr_lat_lon, delimiter ="," )
     np.savetxt("IMU_results_test_post.csv", arr1_imu, delimiter =",")
@@ -267,14 +289,14 @@ def keyboard_interrupt_handler(signal_num, frame):
     exit(0)
     
 signal.signal(signal.SIGINT, keyboard_interrupt_handler)
-
+buffer = bytearray()
 def MTI():
     global buffer
     # Check if there is data in the queue
     if not data_queue.empty():
         data = data_queue.get()
         
-        buffer += data  
+        buffer += (data)  
         # print(len(buffer))
         
 while True: 
