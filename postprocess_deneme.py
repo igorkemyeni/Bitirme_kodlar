@@ -235,7 +235,7 @@ def keyboard_interrupt_handler(signal_num, frame):
         
         arr2_gps[i][58:70]= msg[90:102]
         
-        arr_lat_lon[i][0:2] = [fp1632_to_float64(msg[58:64]),fp1632_to_float64(msg[64:70])]
+        arr_lat_lon[i][0:2] = [fp1632_to_float64(msg[90:96]),fp1632_to_float64(msg[96:102])]
         
         arr2_gps[i][70:76] = msg[105:111]       
         arr_alt[i][0:1] = fp1632_to_float64(msg[105:111])
@@ -268,12 +268,12 @@ def keyboard_interrupt_handler(signal_num, frame):
     
     '''GPS DENEMEYECEKSENİZ BURAYI COMMENTLEYİN ALLAH İÇİN'''
 
-    # arr3_GPS_hepsi = np.hstack((arr_lat_lon,arr_alt,arr_acc_gps,arr_RoR_gps))
-    # df_gps = pd.DataFrame(arr3_GPS_hepsi,columns=['lat','lon','alt','ax','ay','az','RotX','RotY','RotZ'])
-    # df_gps['ts'] = time_stamp_list_gps
-    # df_gps.to_csv('pd_GPS_hepsi.csv', index = False)
-    # np.savetxt("GPS_results_test_Processed.csv", arr3_GPS_hepsi, delimiter=",")
-    # # ts_arr = np.array(time_stamp_list).reshape(-1,1)
+    arr3_GPS_hepsi = np.hstack((arr_lat_lon,arr_alt,arr_acc_gps,arr_RoR_gps, arr_vel))
+    df_gps = pd.DataFrame(arr3_GPS_hepsi,columns=['lat','lon','alt','ax','ay','az','RotX','RotY','RotZ', 'vx', 'vy', 'vz'])
+    df_gps['ts'] = time_stamp_list_gps
+    df_gps.to_csv('pd_GPS_hepsi.csv', index = False)
+    np.savetxt("GPS_results_test_Processed.csv", arr3_GPS_hepsi, delimiter=",")
+    # ts_arr = np.array(time_stamp_list).reshape(-1,1)
     
     
     
