@@ -94,8 +94,8 @@ def keyboard_interrupt_handler(signal_num, frame):
         if (buffer[i] == 250) & (buffer[i+1] ==255) & (buffer [i+2] == 54):
             if buffer[i+3] == 83:
                 counter += 1
-                print(buffer[2], counter)
-                print('len of buf',len(buffer))
+                # print(buffer[2], counter)
+                # print('len of buf',len(buffer))
                 message = buffer[i:i+88]
                 s = sum(message[1:])
                 hex_code = hex(s)[2:]
@@ -110,7 +110,7 @@ def keyboard_interrupt_handler(signal_num, frame):
                 # while len(buffer) <  111:
                 #     print('dolmadı')
                     # print(len(buffer))
-                print(buffer[2])
+                # print(buffer[2])
                 # gps+imu data
                 message = buffer[i:i+133]
                 # GpsImu_data = message[4:111]
@@ -261,24 +261,24 @@ def keyboard_interrupt_handler(signal_num, frame):
         
     """#SADECE IMU İSE BUNU ÇALIŞTIR """
     arr4_imu_hepsi = np.hstack((arr_acc,arr_Mag,arr_RoR))
-    df_imu = pd.DataFrame(arr4_imu_hepsi, columns=['ax','ay','az','mgx','mgy','mgz','RotX','RotY','RotZ'])
+    df_imu = pd.DataFrame(arr4_imu_hepsi, columns=['ax','ay','az','mgx','mgy','mgz','wx','wy','wz'])
     df_imu['ts']= time_stamp_list
-    df_imu.to_csv('pd_IMU_hepsi.csv', index = False)
-
+    df_imu.to_csv('IMU_data.csv', index = False)
     
     '''GPS DENEMEYECEKSENİZ BURAYI COMMENTLEYİN ALLAH İÇİN'''
 
     arr3_GPS_hepsi = np.hstack((arr_lat_lon,arr_alt,arr_acc_gps,arr_RoR_gps, arr_vel))
-    df_gps = pd.DataFrame(arr3_GPS_hepsi,columns=['lat','lon','alt','ax','ay','az','RotX','RotY','RotZ', 'vx', 'vy', 'vz'])
+    df_gps = pd.DataFrame(arr3_GPS_hepsi,columns=['lat','lon','alt','ax','ay','az','wx','wy','wz', 'vx', 'vy', 'vz'])
     df_gps['ts'] = time_stamp_list_gps
     df_gps.to_csv('pd_GPS_hepsi.csv', index = False)
     np.savetxt("GPS_results_test_Processed.csv", arr3_GPS_hepsi, delimiter=",")
-    # ts_arr = np.array(time_stamp_list).reshape(-1,1)
+    ts_arr = np.array(time_stamp_list).reshape(-1,1)
     
     
+    with open(output_file, 'wb') as f:
+        pickle.dump(frame_data_list, f, protocol=pickle.HIGHEST_PROTOCOL)
     
-    
-    np.savetxt("GPS_results_test_post.csv", arr2_gps, delimiter=",")
+    # np.savetxt("GPS_results_test_post.csv", arr2_gps, delimiter=",")
     # np.savetxt("Lat_Lon_results_post.csv", arr_lat_lon, delimiter ="," )
     np.savetxt("IMU_results_test_post.csv", arr1_imu, delimiter =",")
     # Save frame data to a file
@@ -296,13 +296,15 @@ def handle_zed_camera(device_id, output_file):
     
 
     cap = cv2.VideoCapture(device_id)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2560)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
-            frame_data = FrameData(timestamp, frame)
-            frame_data_list.append(frame_data)
+            # timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
+            # frame_data = FrameData(timestamp, frame)
+            frame_data_list.append(frame)
 
             cv2.imshow('ZED Camera', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -312,18 +314,19 @@ def handle_zed_camera(device_id, output_file):
     
 
 frame_data_list = []
-FrameData = namedtuple('FrameData', ['timestamp', 'frame'])
+# FrameData = namedtuple('FrameData', ['timestamp', 'frame'])
 
 # Configure your MTI-7 port and ZED camera device ID
 # mti7_port = "COM3"  # Change this to your MTI-7 device port
 zed_camera_device_id = 1  # Change this if your ZED camera has a different device ID
-output_file = "frame_data.pkl"
+output_file = "frame_data_demo.pkl"
 
 # Start threads for both devices
 # mti7_thread = threading.Thread(target=handle_mti7_data, args=(mti7_port,))
 zed_thread = threading.Thread(target=handle_zed_camera, args=(zed_camera_device_id, output_file))
 # mti7_thread.start()
 zed_thread.start()
+
 def MTI():
     global buffer
     # Check if there is data in the queue
