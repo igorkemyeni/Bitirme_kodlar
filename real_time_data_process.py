@@ -76,57 +76,54 @@ def read_serial_data(ser):
     global IMU_list
     a = True
     while a:
-        if exit_event.is_set():
-            break
-        else:
-            s = 0
-            data = ser.read(1)
-            if data == b"\xfa":
+        s = 0
+        data = ser.read(1)
+        if data == b"\xfa":
+             data = ser.read(1)
+             if data == b"\xff":
+                 s += data[0]
                  data = ser.read(1)
-                 if data == b"\xff":
+                 if data == b"\x36":
                      s += data[0]
                      data = ser.read(1)
-                     if data == b"\x36":
-                         s += data[0]
-                         data = ser.read(1)
-                         if data == b"\x53":
-                             s+= data[0]
-                             data = ser.read(84)
-                             s+= sum(data[0:])
-                             hex_code = hex(s)[-2:]
-                             hex_lower_byte = hex_code[-2:]
-                             if hex_lower_byte == "00":
-                                 
-                                 # print("imu",data[3],data[4])
-                                 imu_parsed = imu_data_parse(data)
-                                 Data_list.append(imu_parsed)
-                                 IMU_list.append(imu_parsed)
-                             else:
-                                 print('Imu data is corrupted, skip packet: ', data[3],data[4])
+                     if data == b"\x53":
+                         s+= data[0]
+                         data = ser.read(84)
+                         s+= sum(data[0:])
+                         hex_code = hex(s)[-2:]
+                         hex_lower_byte = hex_code[-2:]
+                         if hex_lower_byte == "00":
                              
-                         elif data == b"\x80":
-                             s+= data[0]
-                             data = ser.read(129)
-                             s+= sum(data[0:])
-                             hex_code = hex(s)[-2:]
-                             hex_lower_byte = hex_code[-2:]
-                             if hex_lower_byte == "00":
-                                 # print("gps",data[3],data[4])
-                             
-                                 GPS_parsed = GPS_data_parse(data)
-                                 Data_list.append(GPS_parsed)
-                                 GPS_list.append(GPS_parsed)
-                             else:
-                                 print('GPS data is corrupted, skip packet: ', data[3],data[4])
-                         
+                             # print("imu",data[3],data[4])
+                             imu_parsed = imu_data_parse(data)
+                             Data_list.append(imu_parsed)
+                             IMU_list.append(imu_parsed)
                          else:
-                            print('4. ifte hata')
+                             print('Imu data is corrupted, skip packet: ', data[3],data[4])
+                         
+                     elif data == b"\x80":
+                         s+= data[0]
+                         data = ser.read(129)
+                         s+= sum(data[0:])
+                         hex_code = hex(s)[-2:]
+                         hex_lower_byte = hex_code[-2:]
+                         if hex_lower_byte == "00":
+                             # print("gps",data[3],data[4])
+                         
+                             GPS_parsed = GPS_data_parse(data)
+                             Data_list.append(GPS_parsed)
+                             GPS_list.append(GPS_parsed)
+                         else:
+                             print('GPS data is corrupted, skip packet: ', data[3],data[4])
+                     
                      else:
-                         print('3. ifte hata')        # data_queue.put(data)
+                        print('4. ifte hata')
                  else:
-                     print('2. ifte hata')   
-            else:
-                print('ilk ifte hata')
+                     print('3. ifte hata')        # data_queue.put(data)
+             else:
+                 print('2. ifte hata')   
+        else:
+            print('ilk ifte hata')
     
 # def signal_handler(signum, frame):
 #     print("KeyboardInterrupt received, stopping the serial thread...")
@@ -217,8 +214,6 @@ def GPS_data_parse(data):
 stop_sig = 0
 frame_data_list = []
 def handle_zed_camera(device_id):
-    
-    
     global frame_data_list
     global stop_sig
     
@@ -228,34 +223,31 @@ def handle_zed_camera(device_id):
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
     while cap.isOpened():
-        if exit_event.is_set():
-            break
-        else:
-            ret, frame = cap.read()
-            if ret:
-                # timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
-                # frame_data = FrameData(timestamp, frame)
-                frame_data_list.append(frame)
-    
-                cv2.imshow('ZED Camera', frame)
-    
-                if cv2.waitKey(1) & 0xFF == stop_sig:
-                    break
+        ret, frame = cap.read()
+        if ret:
+            # timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
+            # frame_data = FrameData(timestamp, frame)
+            frame_data_list.append(frame)
+
+            cv2.imshow('ZED Camera', frame)
+
+            if cv2.waitKey(1) & 0xFF == stop_sig:
+                break
     cap.release()
     cv2.destroyAllWindows()
     
-def stop_func():
-    global stop_sig
+# def stop_func():
+#     global stop_sig
 
-    inp = input('If you want to stop press s')
-    if inp == 's':
-        exit_event.set()
-        ser.close()
-        stop_sig = 0xFF
+#     inp = input('If you want to stop press s')
+#     if inp == 's':
+#         exit_event.set()
+#         ser.close()
+#         stop_sig = 0xFF
         
         
         
-stop_thread = threading.Thread(target=stop_func)
+# stop_thread = threading.Thread(target=stop_func)
 
 
 zed_camera_device_id = 1  # Change this if your ZED camera has a different deice ID
@@ -266,7 +258,7 @@ serial_thread = threading.Thread(target=read_serial_data, args=(ser,))
 
 zed_thread.start()
 serial_thread.start()
-stop_thread.start()
+# stop_thread.start()
 # serial_thread.join()
 # serial_thread.run()
 
