@@ -23,6 +23,7 @@ from collections import namedtuple
 import pickle
 import random
 import sys
+import csv
 
 factorFP1632 = 1 << 32
 settings = {
@@ -74,8 +75,7 @@ exit_event = threading.Event()
 # Define the thread function to read data from the serial port
 def read_serial_data(ser):
     global IMU_list
-    a = True
-    while a:
+    while not exit_event.is_set():
         s = 0
         data = ser.read(1)
         if data == b"\xfa":
@@ -94,10 +94,10 @@ def read_serial_data(ser):
                          hex_lower_byte = hex_code[-2:]
                          if hex_lower_byte == "00":
                              
-                             # print("imu",data[3],data[4])
-                             imu_parsed = imu_data_parse(data)
-                             Data_list.append(imu_parsed)
-                             IMU_list.append(imu_parsed)
+                              print("imu",data[3],data[4])
+                              imu_parsed = imu_data_parse(data)
+                              Data_list.append(imu_parsed)
+                              IMU_list.append(imu_parsed)
                          else:
                              print('Imu data is corrupted, skip packet: ', data[3],data[4])
                          
@@ -208,7 +208,7 @@ def GPS_data_parse(data):
     GPS_alt = fp1632_to_float64(data[102:108])
     GPS_vel = fp1632_to_float64(data[114:132])  
     
-    total = imu_quaternion +imu_acc+imu_rot+imu_Mag+imu_status + GPS_lat_lon + GPS_alt + GPS_vel
+    total = imu_quaternion +imu_acc+imu_rot+imu_Mag + GPS_lat_lon + GPS_alt + GPS_vel
     return total
 
 stop_sig = 0
@@ -219,10 +219,10 @@ def handle_zed_camera(device_id):
     
 
     cap = cv2.VideoCapture(device_id)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2560)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
-    while cap.isOpened():
+    while cap.isOpened() and not exit_event.is_set():
         ret, frame = cap.read()
         if ret:
             # timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
@@ -258,11 +258,37 @@ serial_thread = threading.Thread(target=read_serial_data, args=(ser,))
 
 zed_thread.start()
 serial_thread.start()
+
+while not exit_event.is_set():
+    a= input('Enter q to exit:')
+    if a == 'q':
+        ser.close()
+        exit_event.set()
+        Data_list = Data_list[10:]
+        output_file = "real_time_camera_data"
+        with open(output_file, 'wb') as f:
+                 pickle.dump(frame_data_list, f)
+        filename = 'real_time_data.csv'
+        with open(filename, "w", newline="") as csv_file:
+            # Create a CSV writer object
+            writer = csv.writer(csv_file)
+            
+            # Write the header row
+            writer.writerow(["q1","q2","q3","q4","ax","ay","az","RotX","RotY","RotZ","mgx","mgy","mgz","lat","lon","alt","vx", "vy", "vz"])
+            
+            # Write each tuple as a row in the CSV file
+            for row in Data_list:
+                writer.writerow(row)
+        
+        
+    
 # stop_thread.start()
 # serial_thread.join()
 # serial_thread.run()
 
-
+    # np.savetxt("GPS_results_test.csv", arr2_gps, delimiter=",")
+    # np.savetxt("Lat_Lon_results.csv", arr_lat_lon, delimiter ="," )
+    # np.savetxt("IMU_results_test.csv", arr1_imu, delimiter =",")
 # def keyboard_interrupt_handler(signal_num, frame):
 #     global serial_threadv
 #     print("KeyboardInterrupt received, running final code...")
