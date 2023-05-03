@@ -108,7 +108,9 @@ def read_serial_data(ser):
                          hex_code = hex(s)[-2:]
                          hex_lower_byte = hex_code[-2:]
                          if hex_lower_byte == "00":
-                             # print("gps",data[3],data[4])
+                             
+                             
+                             print("gps",data[3],data[4])
                          
                              GPS_parsed = GPS_data_parse(data)
                              Data_list.append(GPS_parsed)
@@ -135,7 +137,9 @@ def read_serial_data(ser):
 def time_stamp(data): 
     global time_list
     max_value = 0xFFFFFFFFF
+    # print(data)
     sample_time = data[0]
+    # print('sampt',sample_time)
     
     if sample_time >= max_value:
         # wraparound occurred, subtract max_value and add one day
@@ -147,6 +151,7 @@ def time_stamp(data):
 
     # format the timestamp as a string with milliseconds
     timestamp_str = timestamp.strftime('%H:%M:%S.%f')[:-3]
+    print(timestamp_str)
     time_list.append(timestamp_str)
     
 
@@ -164,7 +169,8 @@ def fp1632_to_float64(fp):
 
 def imu_data_parse(data):
         # TİMESTAMPLAR YANLIŞ GELİYOR DÜZELT
-        time_temp = data[9:13]
+        
+        time_temp = data[8:12]
         time_temp = struct.unpack('!I', time_temp)
         time_stamp(time_temp)
         quaternion = data[15:31]  # 
@@ -186,33 +192,45 @@ def imu_data_parse(data):
 
     
 def GPS_data_parse(data):
-    
-    time_temp = data[9:13]
+    # print('parse girdi', len(data))
+    time_temp = data[8:12]
     time_temp = struct.unpack('!I', time_temp)
     time_stamp(time_temp)
     quaternion = data[15:31]  # 
-    imu_quaternion = struct.unpack('!4f', quaternion) 
+    imu_quaternion = struct.unpack('!4f', quaternion)
+    # print(type(imu_quaternion))
     
     imu_acceleration_bytes = data[34:46]  # 
     imu_acc = struct.unpack('!3f', imu_acceleration_bytes) 
+    # print(type(imu_acc))
     
-    ror_temp = data[49:62]  # 
+    ror_temp = data[49:61]  # 
     imu_rot = struct.unpack('!3f', ror_temp) 
+    # print(type(imu_rot))
     
-    mag_temp = data[65:77]
-    imu_Mag = struct.unpack('!3f', mag_temp) 
+    mag_temp = data[64:76]
+    imu_Mag = struct.unpack('!3f', mag_temp)
+    # print(type(imu_Mag))
     
-    imu_status =  data[80:84]
+    
+    # imu_status =  data[80:84]
     
     GPS_lat_lon = (fp1632_to_float64(data[87:93]),fp1632_to_float64(data[93:99]))
-    GPS_alt = fp1632_to_float64(data[102:108])
-    GPS_vel = fp1632_to_float64(data[114:132])  
+    # print(type(GPS_lat_lon))
+    GPS_alt = (fp1632_to_float64(data[102:108]),)
+    # print(type(GPS_alt))
+    
+    GPS_vel = (fp1632_to_float64(data[111:129]),)  
+    # print(type(GPS_vel))
+    
     
     total = imu_quaternion +imu_acc+imu_rot+imu_Mag + GPS_lat_lon + GPS_alt + GPS_vel
+    # print(type(total))
     return total
 
 stop_sig = 0
 frame_data_list = []
+timelist_zed = list()
 def handle_zed_camera(device_id):
     global frame_data_list
     global stop_sig
@@ -225,9 +243,10 @@ def handle_zed_camera(device_id):
     while cap.isOpened() and not exit_event.is_set():
         ret, frame = cap.read()
         if ret:
-            # timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
+            timestamp = datetime.datetime.now().strftime('%H:%M:%S.%f')
             # frame_data = FrameData(timestamp, frame)
             frame_data_list.append(frame)
+            timelist_zed.append(timestamp)
 
             cv2.imshow('ZED Camera', frame)
 
@@ -250,7 +269,7 @@ def handle_zed_camera(device_id):
 # stop_thread = threading.Thread(target=stop_func)
 
 
-zed_camera_device_id = 1  # Change this if your ZED camera has a different deice ID
+zed_camera_device_id = 0  # Change this if your ZED camera has a different deice ID
 # Start threads for both devices
 zed_thread = threading.Thread(target=handle_zed_camera, args=(zed_camera_device_id,))
 serial_thread = threading.Thread(target=read_serial_data, args=(ser,))
@@ -265,7 +284,7 @@ while not exit_event.is_set():
         ser.close()
         exit_event.set()
         Data_list = Data_list[10:]
-        output_file = "real_time_camera_data"
+        output_file = "real_time_camera_data.pkl"
         with open(output_file, 'wb') as f:
                  pickle.dump(frame_data_list, f)
         filename = 'real_time_data.csv'
