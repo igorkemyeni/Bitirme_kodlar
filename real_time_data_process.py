@@ -78,6 +78,7 @@ def read_serial_data(ser):
     while not exit_event.is_set():
         s = 0
         data = ser.read(1)
+        # print(data)
         if data == b"\xfa":
              data = ser.read(1)
              if data == b"\xff":
@@ -269,7 +270,7 @@ def handle_zed_camera(device_id):
 # stop_thread = threading.Thread(target=stop_func)
 
 
-zed_camera_device_id = 0  # Change this if your ZED camera has a different deice ID
+zed_camera_device_id = 1  # Change this if your ZED camera has a different deice ID
 # Start threads for both devices
 zed_thread = threading.Thread(target=handle_zed_camera, args=(zed_camera_device_id,))
 serial_thread = threading.Thread(target=read_serial_data, args=(ser,))
@@ -280,13 +281,13 @@ serial_thread.start()
 
 while not exit_event.is_set():
     a= input('Enter q to exit:')
-    if a == 'q':
+    if a == 'qw':
         ser.close()
         exit_event.set()
         Data_list = Data_list[10:]
         output_file = "real_time_camera_data.pkl"
         with open(output_file, 'wb') as f:
-                 pickle.dump(frame_data_list, f)
+            pickle.dump(frame_data_list, f)
         filename = 'real_time_data.csv'
         with open(filename, "w", newline="") as csv_file:
             # Create a CSV writer object
@@ -298,6 +299,11 @@ while not exit_event.is_set():
             # Write each tuple as a row in the CSV file
             for row in Data_list:
                 writer.writerow(row)
+    
+    elif a == 'qa':
+        ser.close()
+        exit_event.set()
+        
         
         
     
